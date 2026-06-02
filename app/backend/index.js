@@ -55,7 +55,7 @@ async function getDbPassword() {
         */
 
         console.log("Successfully authenticated with CSM using Kubernetes JWT.");
-        return process.env.DB_PASSWORD || 'demo_password'; 
+        return process.env.DB_PASSWORD || 'temppass'; 
     } catch (error) {
         console.error("CSM K8s authentication failed:", error.message);
         throw error;

@@ -5,7 +5,6 @@ This project demonstrates **CipherTrust Secrets Management (CSM)** and **RESTful
 ## Project Structure
 - `/app/frontend`: React (TS) + Tailwind CSS UI.
 - `/app/backend`: Node.js Express server (integrates with Thales APIs & MySQL).
-- `/mysql`: Initialization scripts for the database.
 - `/k8s`: Kubernetes Deployment, Service, and ConfigMap manifests.
 - `Dockerfile`: Multi-stage build for the unified application image.
 
