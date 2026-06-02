@@ -31,7 +31,7 @@ spec:
       serviceAccountName: thales-demo-sa
       containers:
       - name: app
-        image: your-registry/thales-demo-app:latest
+        image: ghcr.io/crunchsa/thales-demo-app:latest
         ports:
         - containerPort: 3001
         env:

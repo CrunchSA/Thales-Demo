@@ -63,20 +63,23 @@ async function getDbPassword() {
 }
 
 // Function to call Thales CRDP for protection/reveal
-async function callCRDP(action, data) {
+async function callCRDP(action, policyName, data) {
     const endpoint = action === 'protect' ? '/v1/protect' : '/v1/reveal';
+    const payload = {
+        [action === 'protect' ? 'protection_policy_name' : 'access_policy_name']: policyName,
+        data: data
+    };
+
     try {
-        const response = await axios.post(`${process.env.CM_URL}${endpoint}`, {
-            data: data
-        }, {
+        const response = await axios.post(`${process.env.CM_URL}${endpoint}`, payload, {
             headers: {
-                'Authorization': `Bearer ${process.env.CM_TOKEN}`, // Usually handled via client_id/secret exchange
+                'Authorization': `Bearer ${process.env.CM_TOKEN}`,
                 'Content-Type': 'application/json'
             }
         });
         return response.data;
     } catch (error) {
-        console.error(`CRDP ${action} failed:`, error.message);
+        console.error(`CRDP ${action} failed:`, error.response?.data || error.message);
         throw error;
     }
 }
@@ -99,34 +102,41 @@ async function initDb() {
 }
 
 // Routes
+app.get('/api/records', async (req, res) => {
+    try {
+        const [rows] = await db.execute('SELECT * FROM customer_records ORDER BY created_at DESC');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/save', async (req, res) => {
     const { name, email, credit_card } = req.body;
     
     try {
-        // 1. Protect sensitive fields using CRDP
         console.log("Protecting data via CRDP...");
-        // In reality, you'd send an array of fields to CRDP
+        
+        /* Live Integration:
+        const emailProtection = await callCRDP('protect', process.env.CRDP_EMAIL_POLICY, email);
+        const ccProtection = await callCRDP('protect', process.env.CRDP_CC_POLICY, credit_card);
         const protectedData = {
-            email: `enc(${email})`, // Simulation of CRDP output
+            email: emailProtection.protected_data,
+            credit_card: ccProtection.protected_data
+        };
+        */
+
+        const protectedData = {
+            email: `enc(${email})`, // Simulation
             credit_card: `enc(${credit_card})`
         };
 
-        // 2. Save to MySQL
         const [result] = await db.execute(
             'INSERT INTO customer_records (name, email, credit_card) VALUES (?, ?, ?)',
             [name, protectedData.email, protectedData.credit_card]
         );
 
         res.json({ success: true, id: result.insertId, protectedData });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.get('/api/records', async (req, res) => {
-    try {
-        const [rows] = await db.execute('SELECT * FROM customer_records ORDER BY created_at DESC');
-        res.json(rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -139,7 +149,13 @@ app.post('/api/reveal', async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ error: "Not found" });
         
         const encryptedValue = rows[0][field];
-        // Call CRDP Reveal
+        const policy = field === 'email' ? process.env.CRDP_EMAIL_POLICY : process.env.CRDP_CC_POLICY;
+
+        /* Live Integration:
+        const revealResult = await callCRDP('reveal', policy, encryptedValue);
+        const decryptedValue = revealResult.revealed_data;
+        */
+        
         const decryptedValue = encryptedValue.replace('enc(', '').replace(')', ''); // Simulation
         
         res.json({ original: encryptedValue, revealed: decryptedValue });
