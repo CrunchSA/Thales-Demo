@@ -1,13 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import axios from 'axios';
 
 const API_BASE = 'http://localhost:3001/api';
 
+interface Record {
+  id: number;
+  name: string;
+  email: string;
+  credit_card: string;
+}
+
+interface RevealedData {
+  [key: string]: string;
+}
+
 function App() {
   const [formData, setFormData] = useState({ name: '', email: '', credit_card: '' });
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
-  const [revealedData, setRevealedData] = useState({});
+  const [revealedData, setRevealedData] = useState<RevealedData>({});
 
   useEffect(() => {
     fetchRecords();
@@ -22,30 +33,34 @@ function App() {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
       await axios.post(`${API_BASE}/save`, formData);
       setFormData({ name: '', email: '', credit_card: '' });
       fetchRecords();
-    } catch (err) {
-      alert("Error saving record: " + err.message);
+    } catch (err: any) {
+      alert("Error saving record: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleReveal = async (id, field) => {
+  const handleReveal = async (id: number, field: string) => {
     try {
       const response = await axios.post(`${API_BASE}/reveal`, { id, field });
       setRevealedData(prev => ({
         ...prev,
         [`${id}-${field}`]: response.data.revealed
       }));
-    } catch (err) {
-      alert("Reveal failed: " + err.message);
+    } catch (err: any) {
+      alert("Reveal failed: " + (err.response?.data?.error || err.message));
     }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: string) => {
+    setFormData({ ...formData, [field]: e.target.value });
   };
 
   return (
@@ -78,7 +93,7 @@ function App() {
                   type="text" 
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#003764] focus:border-transparent outline-none transition"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) => handleInputChange(e, 'name')}
                   required
                 />
               </div>
@@ -88,7 +103,7 @@ function App() {
                   type="email" 
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#003764] focus:border-transparent outline-none transition"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  onChange={(e) => handleInputChange(e, 'email')}
                   required
                 />
               </div>
@@ -98,7 +113,7 @@ function App() {
                   type="text" 
                   className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#003764] focus:border-transparent outline-none transition"
                   value={formData.credit_card}
-                  onChange={(e) => setFormData({...formData, credit_card: e.target.value})}
+                  onChange={(e) => handleInputChange(e, 'credit_card')}
                   required
                 />
               </div>
@@ -170,7 +185,7 @@ function App() {
                   ))}
                   {records.length === 0 && (
                     <tr>
-                      <td colSpan="3" className="px-6 py-12 text-center text-slate-400">No records found. Add one on the left!</td>
+                      <td colSpan={3} className="px-6 py-12 text-center text-slate-400">No records found. Add one on the left!</td>
                     </tr>
                   )}
                 </tbody>

@@ -1,5 +1,5 @@
 # Stage 1: Build Frontend
-FROM node:20-alpine@sha256:f4d1b5d7c5e4c5e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e AS build-frontend
+FROM node:20-alpine AS build-frontend
 RUN apk update && apk upgrade --no-cache
 WORKDIR /app/frontend
 COPY app/frontend/package*.json ./
@@ -7,14 +7,25 @@ RUN npm ci
 COPY app/frontend/ ./
 RUN npm run build
 
-# Stage 2: Build Backend & Final Image
-FROM node:20-alpine@sha256:f4d1b5d7c5e4c5e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3
+# Stage 2: Build Backend
+FROM node:20-alpine AS build-backend
 RUN apk update && apk upgrade --no-cache
+WORKDIR /app/backend
+COPY app/backend/package*.json ./
+RUN npm ci --omit=dev
+COPY app/backend/ ./
+
+# Stage 3: Final Hardened Production Image
+FROM cgr.dev/chainguard/node:latest
 WORKDIR /app
-COPY app/backend/package*.json ./backend/
-RUN cd backend && npm ci --omit=dev
-COPY app/backend/ ./backend/
-COPY --from=build-frontend /app/frontend/dist ./frontend-dist
+
+# Copy production backend dependencies and source
+COPY --from=build-backend --chown=node:node /app/backend ./backend
+
+# Copy built frontend assets
+COPY --from=build-frontend --chown=node:node /app/frontend/dist ./frontend-dist
 
 EXPOSE 3001
-CMD ["node", "backend/index.js"]
+
+# The Chainguard node image has 'node' as the ENTRYPOINT
+CMD ["backend/index.js"]
