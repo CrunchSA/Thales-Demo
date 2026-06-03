@@ -46,16 +46,19 @@ async function getDbPassword() {
         const accessId = process.env.CSM_ACCESS_ID || 'dummy-access-id';
         const authConfigName = process.env.CSM_K8S_AUTH_CONFIG || 'k8s-auth-config';
 
+        k8sToken = k8sToken.trim();
+        const k8sTokenBase64 = Buffer.from(k8sToken, 'utf8').toString('base64');
+
         addLog("Authenticating with CSM using K8s JWT...", { 
             endpoint: `${csmUrl}/api/v2/auth`, 
-            payload: { 'access-type': 'k8s', 'access-id': accessId, 'k8s-service-account-token': '[REDACTED_JWT]', 'k8s-auth-config-name': authConfigName }
+            payload: { 'access-type': 'k8s', 'access-id': accessId, 'k8s-service-account-token': '[REDACTED_BASE64_JWT]', 'k8s-auth-config-name': authConfigName }
         });
 
         // LIVE INTEGRATION: Authenticate
         const authPayload = {
             'access-id': accessId,
             'access-type': 'k8s',
-            'k8s-service-account-token': k8sToken,
+            'k8s-service-account-token': k8sTokenBase64,
             'k8s-auth-config-name': authConfigName
         };
         const authResponse = await axios.post(`${csmUrl}/api/v2/auth`, authPayload);
