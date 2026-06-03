@@ -111,6 +111,23 @@ function App() {
     }
   };
 
+  const handleClearRecords = async () => {
+    const confirmed = window.confirm('Clear all demo records from the database? This cannot be undone.');
+    if (!confirmed) return;
+
+    const url = `${API_BASE}/clear-records`;
+    try {
+      const response = await axios.post(url);
+      addApiLog({ method: 'POST', url, request: null, response: response.data });
+      fetchRecords();
+      setRevealedData({});
+      alert(`Cleared ${response.data.deletedRows || 0} record(s).`);
+    } catch (err: any) {
+      addApiLog({ method: 'POST', url, request: null, error: err.message });
+      alert('Failed to clear records: ' + (err.response?.data?.error || err.message));
+    }
+  };
+
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: string) => {
     setFormData({ ...formData, [field]: e.target.value });
   };
@@ -190,9 +207,12 @@ function App() {
         {/* Display Section */}
         <section className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <div className="p-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h2 className="text-xl font-semibold text-slate-800">Database View (Encrypted)</h2>
-              <button onClick={fetchRecords} className="text-[#003764] text-sm hover:underline">Refresh</button>
+              <div className="flex gap-3">
+                <button onClick={fetchRecords} className="text-[#003764] text-sm hover:underline">Refresh</button>
+                <button onClick={handleClearRecords} className="text-red-600 text-sm hover:underline">Clear Database</button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">

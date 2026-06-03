@@ -151,6 +151,15 @@ app.get('/api/records', async (req, res) => {
     }
 });
 
+app.post('/api/clear-records', async (req, res) => {
+    try {
+        const [result] = await db.execute('DELETE FROM customer_records');
+        res.json({ success: true, deletedRows: result.affectedRows });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post('/api/protect', async (req, res) => {
     const { name, email, credit_card } = req.body;
     
@@ -208,7 +217,7 @@ app.post('/api/reveal', async (req, res) => {
         steps.push({ 
             action: 'CRDP Reveal Request', 
             endpoint: `${cmUrl}/v1/reveal`, 
-            payload: { policy, data: encryptedValue }
+            payload: { policy: 'Generic', data: encryptedValue }
         });
 
         // Live Integration
