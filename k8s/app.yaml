@@ -69,7 +69,10 @@ spec:
               name: thales-secrets
               key: CSM_ACCESS_ID
         - name: CSM_K8S_AUTH_CONFIG
-          value: "k8s-auth-config" # Name of the K8s Auth config in CSM/Akeyless
+          valueFrom:
+            secretKeyRef:
+              name: thales-config
+              key: CSM_K8S_AUTH_CONFIG
         - name: DB_HOST
           value: "mysql-service"
         - name: DB_USER
