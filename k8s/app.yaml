@@ -48,6 +48,16 @@ spec:
             configMapKeyRef:
               name: thales-config
               key: CM_URL
+        - name: CSM_URL
+          valueFrom:
+            configMapKeyRef:
+              name: thales-config
+              key: CSM_URL
+        - name: CSM_DB_PASSWORD_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: thales-config
+              key: CSM_DB_PASSWORD_PATH
         - name: CM_TOKEN
           valueFrom:
             secretKeyRef:

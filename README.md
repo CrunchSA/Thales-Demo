@@ -31,7 +31,8 @@ kubectl create namespace thales-demo
 # Create ConfigMap for CRDP/Akeyless URLs
 kubectl create configmap -n thales-demo thales-config \
   --from-literal=CM_URL="http://crdpdemo" \
-  --from-literal=CSM_URL="https://api.akeyless.io"
+  --from-literal=CSM_URL="https://ciphertrust.thegrahamfam.com/akeyless" \
+  --from-literal=CSM_DB_PASSWORD_PATH="/se-accounts/csm-christian.graham/Thales-Demo-MySQL"
 
 # Create Secret for sensitive credentials
 kubectl create secret generic thales-secrets -n thales-demo \
