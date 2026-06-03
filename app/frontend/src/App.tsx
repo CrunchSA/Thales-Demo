@@ -29,6 +29,7 @@ function App() {
   const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
   const [revealedData, setRevealedData] = useState<RevealedData>({});
+  const [revealUserName, setRevealUserName] = useState('');
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
 
   const addApiLog = (log: Omit<ApiLog, 'id' | 'time'>) => {
@@ -109,7 +110,7 @@ function App() {
 
   const handleReveal = async (id: number, field: string) => {
     const url = `${API_BASE}/reveal`;
-    const payload = { id, field };
+    const payload = { id, field, username: revealUserName };
     try {
       const response = await axios.post(url, payload);
       addApiLog({ method: 'POST', url, request: payload, response: response.data });
@@ -251,9 +252,24 @@ function App() {
         {/* Display Section */}
         <section className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-6 border-b border-slate-100 bg-slate-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h2 className="text-xl font-semibold text-slate-800">Database View (Encrypted)</h2>
-              <div className="flex gap-3">
+            <div className="p-6 border-b border-slate-100 bg-slate-50">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-800">Database View (Encrypted)</h2>
+                  <p className="text-sm text-slate-500">Enter a username to include with each reveal request.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                  <label className="text-sm font-medium text-slate-600">Reveal Username</label>
+                  <input
+                    type="text"
+                    value={revealUserName}
+                    onChange={(e) => setRevealUserName(e.target.value)}
+                    placeholder="Username for reveal"
+                    className="w-full sm:w-64 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#003764] focus:border-transparent outline-none transition"
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-3">
                 <button onClick={fetchRecords} className="text-[#003764] text-sm hover:underline">Refresh</button>
                 <button onClick={handleClearRecords} className="text-red-600 text-sm hover:underline">Clear Database</button>
               </div>
