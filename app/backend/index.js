@@ -58,7 +58,7 @@ async function getDbPassword() {
             'k8s-service-account-token': k8sToken,
             'k8s-auth-config-name': authConfigName
         };
-        const authResponse = await axios.post(`${csmUrl}/api/v2/auth`, authPayload);
+        const authResponse = await axios.post(`${csmUrl}/akeyless/api/v2/auth`, authPayload);
         const csmToken = authResponse.data.token;
 
         const secretPath = process.env.CSM_DB_PASSWORD_PATH || '/secrets/mysql-pass';
@@ -72,7 +72,7 @@ async function getDbPassword() {
             'token': csmToken,
             'name': [secretPath]
         };
-        const secretResponse = await axios.post(`${csmUrl}/api/v2/get-secret-value`, secretPayload);
+        const secretResponse = await axios.post(`${csmUrl}/akeyless/api/v2/get-secret-value`, secretPayload);
         
         const password = secretResponse.data[secretPath];
         addLog("Successfully authenticated and retrieved MySQL password.");
