@@ -108,14 +108,30 @@ async function callCRDP(action, policyName, data) {
     
     const cmUrl = process.env.CM_URL || 'http://crdpdemo';
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (process.env.CM_TOKEN) headers['Authorization'] = `Bearer ${process.env.CM_TOKEN}`;
+
+    addLog(`Calling CRDP ${action}`, {
+        endpoint: `${cmUrl}${endpoint}`,
+        payload
+    });
+
     try {
-        const headers = { 'Content-Type': 'application/json' };
-        if (process.env.CM_TOKEN) headers['Authorization'] = `Bearer ${process.env.CM_TOKEN}`;
-        
         const response = await axios.post(`${cmUrl}${endpoint}`, payload, { headers });
+        addLog(`CRDP ${action} succeeded`, {
+            endpoint: `${cmUrl}${endpoint}`,
+            payload,
+            response: response.data
+        });
         return response.data;
     } catch (error) {
-        console.error(`CRDP ${action} failed:`, error.response?.data || error.message);
+        const errorMessage = error.response?.data || error.message;
+        addLog(`CRDP ${action} failed`, {
+            endpoint: `${cmUrl}${endpoint}`,
+            payload,
+            error: errorMessage
+        });
+        console.error(`CRDP ${action} failed:`, errorMessage);
         throw error;
     }
 }
