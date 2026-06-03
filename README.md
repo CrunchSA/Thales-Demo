@@ -22,7 +22,7 @@ Before deploying, create the secrets and configmaps for your CipherTrust applian
 
 ```bash
 # Create ConfigMap for non-sensitive data
-kubectl create configmap thales-config --from-literal=CM_URL="https://your-cm-ip"
+kubectl create configmap -n thales-demo thales-config --from-literal=CM_URL="https://your-cm-ip"
 
 # Create Secret for sensitive credentials
 kubectl create secret generic thales-secrets \
