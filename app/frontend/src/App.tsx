@@ -61,7 +61,16 @@ function App() {
       addApiLog({ method: 'GET', url, request: null, response: response.data });
       setRecords(response.data);
     } catch (err: any) {
-      addApiLog({ method: 'GET', url, request: null, error: err.message });
+      addApiLog({
+        method: 'GET',
+        url,
+        request: null,
+        error: {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        }
+      });
       console.error("Failed to fetch records", err);
     }
   };
@@ -82,7 +91,16 @@ function App() {
       setFormData({ name: '', email: '', credit_card: '' });
       fetchRecords();
     } catch (err: any) {
-      addApiLog({ method: 'POST', url, request: formData, error: err.message });
+      addApiLog({
+        method: 'POST',
+        url,
+        request: formData,
+        error: {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        }
+      });
       alert("Error saving record: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
@@ -106,7 +124,16 @@ function App() {
         [`${id}-${field}`]: response.data.revealed
       }));
     } catch (err: any) {
-      addApiLog({ method: 'POST', url, request: payload, error: err.message });
+      addApiLog({
+        method: 'POST',
+        url,
+        request: payload,
+        error: {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        }
+      });
       alert("Reveal failed: " + (err.response?.data?.error || err.message));
     }
   };
@@ -123,13 +150,30 @@ function App() {
       setRevealedData({});
       alert(`Cleared ${response.data.deletedRows || 0} record(s).`);
     } catch (err: any) {
-      addApiLog({ method: 'POST', url, request: null, error: err.message });
+      addApiLog({
+        method: 'POST',
+        url,
+        request: null,
+        error: {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data
+        }
+      });
       alert('Failed to clear records: ' + (err.response?.data?.error || err.message));
     }
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: string) => {
     setFormData({ ...formData, [field]: e.target.value });
+  };
+
+  const renderLogValue = (value: any) => {
+    if (value === null || value === undefined) return <span className="text-slate-500">{String(value)}</span>;
+    if (typeof value === 'object') {
+      return <pre className="whitespace-pre-wrap text-slate-300 bg-slate-800 p-2 rounded-md overflow-x-auto">{JSON.stringify(value, null, 2)}</pre>;
+    }
+    return <span>{String(value)}</span>;
   };
 
   return (
@@ -277,9 +321,24 @@ function App() {
               {apiLogs.map(log => (
                 <div key={log.id} className="border-b border-slate-800 pb-2">
                   <div className="text-blue-400">[{log.time}] {log.method} {log.url}</div>
-                  {log.request && <div className="text-slate-400 mt-1">Request: {JSON.stringify(log.request)}</div>}
-                  {log.response && <div className="text-green-500 mt-1">Response: {JSON.stringify(log.response)}</div>}
-                  {log.error && <div className="text-red-500 mt-1">Error: {JSON.stringify(log.error)}</div>}
+                  {log.request && (
+                    <div className="text-slate-400 mt-1">
+                      <div className="font-semibold">Request:</div>
+                      {renderLogValue(log.request)}
+                    </div>
+                  )}
+                  {log.response && (
+                    <div className="text-green-500 mt-1">
+                      <div className="font-semibold">Response:</div>
+                      {renderLogValue(log.response)}
+                    </div>
+                  )}
+                  {log.error && (
+                    <div className="text-red-500 mt-1">
+                      <div className="font-semibold">Error:</div>
+                      {renderLogValue(log.error)}
+                    </div>
+                  )}
                 </div>
               ))}
               {apiLogs.length === 0 && <div className="text-slate-500">No API calls made yet.</div>}
