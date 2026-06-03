@@ -220,9 +220,12 @@ app.post('/api/reveal', async (req, res) => {
     }
 });
 
-// Wildcard route to serve index.html for SPA
-app.get('/*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
+// SPA fallback: serve index.html for non-API GET requests
+app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/backend')) {
+        return res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
+    }
+    next();
 });
 
 async function startServer() {
