@@ -47,7 +47,7 @@ async function getDbPassword() {
         const authConfigName = process.env.CSM_K8S_AUTH_CONFIG || 'k8s-auth-config';
 
         addLog("Authenticating with CSM using K8s JWT...", { 
-            endpoint: `${csmUrl}/akeyless/api/v2/auth`, 
+            endpoint: `${csmUrl}/api/v2/auth`, 
             payload: { 'access-type': 'k8s', 'access-id': accessId, 'k8s-service-account-token': '[REDACTED_JWT]', 'k8s-auth-config-name': authConfigName }
         });
 
@@ -58,12 +58,12 @@ async function getDbPassword() {
             'k8s-service-account-token': k8sToken,
             'k8s-auth-config-name': authConfigName
         };
-        const authResponse = await axios.post(`${csmUrl}/akeyless/api/v2/auth`, authPayload);
+        const authResponse = await axios.post(`${csmUrl}/api/v2/auth`, authPayload);
         const csmToken = authResponse.data.token;
 
         const secretPath = process.env.CSM_DB_PASSWORD_PATH || '/secrets/mysql-pass';
         addLog("Fetching DB secret from CSM...", { 
-            endpoint: `${csmUrl}/akeyless/api/v2/get-secret-value`, 
+            endpoint: `${csmUrl}/api/v2/get-secret-value`, 
             payload: { 'names': [secretPath] }
         });
 
@@ -72,7 +72,7 @@ async function getDbPassword() {
             'token': csmToken,
             'name': [secretPath]
         };
-        const secretResponse = await axios.post(`${csmUrl}/akeyless/api/v2/get-secret-value`, secretPayload);
+        const secretResponse = await axios.post(`${csmUrl}/api/v2/get-secret-value`, secretPayload);
         
         const password = secretResponse.data[secretPath];
         addLog("Successfully authenticated and retrieved MySQL password.");
