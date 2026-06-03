@@ -10,44 +10,40 @@ This project demonstrates **CipherTrust Secrets Management (CSM)** and **RESTful
 
 ## Deployment Steps
 
-### 1. Build the Container
-From the root directory:
-```bash
-docker build -t ghcr.io/crunchsa/thales-demo-app:latest .
-docker push ghcr.io/crunchsa/thales-demo-app:latest
-```
-
-### 2. Configure Akeyless & Kubernetes Secrets
+### 1. Configure Akeyless & Kubernetes Secrets
 Before deploying, configure your CipherTrust/Akeyless appliance:
 
-1. **MySQL Password:** Create a secret in Akeyless at the path `/secrets/mysql-pass` with the value `temppass`. The backend will fetch this dynamically at startup to authenticate with the database.
+1. **MySQL Password:** Create a secret in CipherTrust Secrets Manager/Akeyless with the value `temppass`. The backend will fetch this dynamically at startup to authenticate with the database.
 2. **K8s Auth Method:** Ensure you have configured a Kubernetes Auth Method in your Akeyless console that matches the `thales-demo-sa` ServiceAccount and the `thales-demo` namespace.
 
-Next, create the ConfigMaps and Secrets in your cluster:
+Next, create the ConfigMaps and Secrets in your cluster using your own environment-specific values:
 ```bash
 # Create the namespace first
 kubectl create namespace thales-demo
 
-# Create ConfigMap for CRDP/Akeyless URLs
+# Create ConfigMap for CRDP/Akeyless URLs and policy settings
 kubectl create configmap -n thales-demo thales-config \
-  --from-literal=CM_URL="http://crdpdemo" \
-  --from-literal=CSM_URL="https://ciphertrust.thegrahamfam.com/akeyless" \
-  --from-literal=CSM_DB_PASSWORD_PATH="/se-accounts/csm-christian.graham/Thales-Demo-MySQL"
+  --from-literal=CM_URL="<YOUR_CRDP_URL>" \
+  --from-literal=CSM_URL="<YOUR_CSM_API_URL>" \
+  --from-literal=CSM_DB_PASSWORD_PATH="<YOUR_CSM_DB_SECRET_PATH>" \
+  --from-literal=CRDP_CC_POLICY="<YOUR_CC_POLICY_NAME>" \
+  --from-literal=CRDP_EMAIL_POLICY="<YOUR_EMAIL_POLICY_NAME>" \
+  --from-literal=CSM_K8S_AUTH_CONFIG="<YOUR_K8S_AUTH_CONFIG_NAME>"
 
 # Create Secret for sensitive credentials
 kubectl create secret generic thales-secrets -n thales-demo \
-  --from-literal=CM_TOKEN="your-crdp-token" \
-  --from-literal=CSM_ACCESS_ID="your-csm-auth-method-id"
+  --from-literal=CM_TOKEN="<YOUR_CRDP_TOKEN>" \
+  --from-literal=CSM_ACCESS_ID="<YOUR_CSM_ACCESS_ID>"
 ```
 
-### 3. Deploy to Cluster
+### 2. Deploy to Cluster
 Apply the manifests:
 ```bash
 kubectl apply -f k8s/mysql.yaml
 kubectl apply -f k8s/app.yaml
 ```
 
-### 4. Access the Demo
+### 3. Access the Demo
 The app is exposed via a `NodePort` service. Get the assigned port and access it via your node's IP:
 ```bash
 kubectl get service thales-demo-app -n thales-demo
