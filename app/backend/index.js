@@ -18,12 +18,17 @@ app.use(express.static(path.join(__dirname, '../frontend-dist')));
 const PORT = process.env.PORT || 3001;
 
 let db;
-
 const fs = require('fs').promises;
+
+let backendLogs = [];
+function addLog(message, details = null) {
+    backendLogs.push({ time: new Date().toISOString(), message, details });
+    console.log(message);
+}
 
 // Function to fetch DB password from Thales CSM (Akeyless) using K8s Auth
 async function getDbPassword() {
-    console.log("Fetching DB password via Kubernetes-native authentication...");
+    addLog("Fetching DB password via Kubernetes-native authentication...");
     try {
         // 1. Read the K8s ServiceAccount JWT token
         const k8sTokenPath = '/var/run/secrets/kubernetes.io/serviceaccount/token';
@@ -31,33 +36,46 @@ async function getDbPassword() {
         
         try {
             k8sToken = await fs.readFile(k8sTokenPath, 'utf8');
+            addLog("Read K8s ServiceAccount JWT Token", { path: k8sTokenPath, tokenLength: k8sToken.length });
         } catch (e) {
-            console.log("K8s token not found at path. Falling back to static password for local testing.");
-            return process.env.DB_PASSWORD || 'demo_password';
+            addLog("K8s token not found at path. Falling back to static password for local testing.", { path: k8sTokenPath });
+            return process.env.DB_PASSWORD || 'temppass';
         }
 
-        // 2. Authenticate with CSM (Akeyless) using the K8s token
-        // In a live environment, this would call the /auth endpoint of your CSM
-        /*
-        const authResponse = await axios.post(`${process.env.CSM_URL}/auth`, {
-            'access-id': process.env.CSM_ACCESS_ID,
+        const csmUrl = process.env.CSM_URL || 'https://api.akeyless.io';
+        const accessId = process.env.CSM_ACCESS_ID || 'dummy-access-id';
+        const authConfigName = process.env.CSM_K8S_AUTH_CONFIG || 'k8s-auth-config';
+
+        addLog("Authenticating with CSM using K8s JWT...", { 
+            endpoint: `${csmUrl}/auth`, 
+            payload: { 'access-id': accessId, 'k8s-service-account-token': '[REDACTED_JWT]', 'k8s-auth-config-name': authConfigName }
+        });
+
+        // LIVE INTEGRATION: Authenticate
+        const authResponse = await axios.post(`${csmUrl}/auth`, {
+            'access-id': accessId,
             'k8s-service-account-token': k8sToken,
-            'k8s-auth-config-name': process.env.CSM_K8S_AUTH_CONFIG // e.g., 'prod-k8s-cluster'
+            'k8s-auth-config-name': authConfigName
         });
         const csmToken = authResponse.data.token;
 
-        // 3. Fetch the secret using the CSM token
-        const secretResponse = await axios.post(`${process.env.CSM_URL}/get-secret-value`, {
-            'token': csmToken,
-            'names': [process.env.CSM_DB_PASSWORD_PATH]
+        const secretPath = process.env.CSM_DB_PASSWORD_PATH || '/secrets/mysql-pass';
+        addLog("Fetching DB secret from CSM...", { 
+            endpoint: `${csmUrl}/get-secret-value`, 
+            payload: { 'names': [secretPath] }
         });
-        return secretResponse.data[process.env.CSM_DB_PASSWORD_PATH];
-        */
 
-        console.log("Successfully authenticated with CSM using Kubernetes JWT.");
-        return process.env.DB_PASSWORD || 'temppass'; 
+        // LIVE INTEGRATION: Fetch Secret
+        const secretResponse = await axios.post(`${csmUrl}/get-secret-value`, {
+            'token': csmToken,
+            'names': [secretPath]
+        });
+        
+        const password = secretResponse.data[secretPath];
+        addLog("Successfully authenticated and retrieved MySQL password.");
+        return password || process.env.DB_PASSWORD || 'temppass'; 
     } catch (error) {
-        console.error("CSM K8s authentication failed:", error.message);
+        addLog("CSM K8s authentication failed: " + (error.response?.data?.message || error.message));
         throw error;
     }
 }
@@ -69,14 +87,14 @@ async function callCRDP(action, policyName, data) {
         [action === 'protect' ? 'protection_policy_name' : 'access_policy_name']: policyName,
         data: data
     };
+    
+    const cmUrl = process.env.CM_URL || 'http://crdpdemo';
 
     try {
-        const response = await axios.post(`${process.env.CM_URL}${endpoint}`, payload, {
-            headers: {
-                'Authorization': `Bearer ${process.env.CM_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
-        });
+        const headers = { 'Content-Type': 'application/json' };
+        if (process.env.CM_TOKEN) headers['Authorization'] = `Bearer ${process.env.CM_TOKEN}`;
+        
+        const response = await axios.post(`${cmUrl}${endpoint}`, payload, { headers });
         return response.data;
     } catch (error) {
         console.error(`CRDP ${action} failed:`, error.response?.data || error.message);
@@ -88,13 +106,14 @@ async function callCRDP(action, policyName, data) {
 async function initDb() {
     try {
         const password = await getDbPassword();
+        addLog("Connecting to MySQL Database...", { host: process.env.DB_HOST, user: process.env.DB_USER, database: process.env.DB_NAME });
         db = await mysql.createConnection({
             host: process.env.DB_HOST,
             user: process.env.DB_USER,
             database: process.env.DB_NAME,
             password: password
         });
-        console.log("Connected to MySQL Database.");
+        addLog("Connected to MySQL Database.");
     } catch (error) {
         console.error("Database initialization failed:", error.message);
         process.exit(1);
@@ -102,6 +121,9 @@ async function initDb() {
 }
 
 // Routes
+app.get('/api/startup-logs', (req, res) => {
+    res.json(backendLogs);
+});
 app.get('/api/records', async (req, res) => {
     try {
         const [rows] = await db.execute('SELECT * FROM customer_records ORDER BY created_at DESC');
@@ -111,32 +133,39 @@ app.get('/api/records', async (req, res) => {
     }
 });
 
-app.post('/api/save', async (req, res) => {
+app.post('/api/protect', async (req, res) => {
     const { name, email, credit_card } = req.body;
     
     try {
-        console.log("Protecting data via CRDP...");
+        const steps = [];
+        const cmUrl = process.env.CM_URL || 'http://crdpdemo';
+        const emailPolicy = process.env.CRDP_EMAIL_POLICY || 'email_policy';
+        const ccPolicy = process.env.CRDP_CC_POLICY || 'cc_policy';
         
-        /* Live Integration:
-        const emailProtection = await callCRDP('protect', process.env.CRDP_EMAIL_POLICY, email);
-        const ccProtection = await callCRDP('protect', process.env.CRDP_CC_POLICY, credit_card);
+        steps.push({ 
+            action: 'CRDP Protect Request', 
+            endpoint: `${cmUrl}/v1/protect`, 
+            payload: { policy: emailPolicy, data: email }
+        });
+
+        // Live Integration
+        const emailProtection = await callCRDP('protect', emailPolicy, email);
+        const ccProtection = await callCRDP('protect', ccPolicy, credit_card);
+        
         const protectedData = {
-            email: emailProtection.protected_data,
-            credit_card: ccProtection.protected_data
-        };
-        */
-
-        const protectedData = {
-            email: `enc(${email})`, // Simulation
-            credit_card: `enc(${credit_card})`
+            email: emailProtection.protected_data || emailProtection.data || `err(${email})`,
+            credit_card: ccProtection.protected_data || ccProtection.data || `err(${credit_card})`
         };
 
-        const [result] = await db.execute(
-            'INSERT INTO customer_records (name, email, credit_card) VALUES (?, ?, ?)',
-            [name, protectedData.email, protectedData.credit_card]
-        );
+        steps.push({ action: 'CRDP Protect Response', result: protectedData });
 
-        res.json({ success: true, id: result.insertId, protectedData });
+        const query = 'INSERT INTO customer_records (name, email, credit_card) VALUES (?, ?, ?)';
+        const params = [name, protectedData.email, protectedData.credit_card];
+        steps.push({ action: 'MySQL Insert', query, params });
+
+        const [result] = await db.execute(query, params);
+
+        res.json({ success: true, id: result.insertId, protectedData, backendSteps: steps });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -145,20 +174,32 @@ app.post('/api/save', async (req, res) => {
 app.post('/api/reveal', async (req, res) => {
     const { id, field } = req.body;
     try {
-        const [rows] = await db.execute(`SELECT ${field} FROM customer_records WHERE id = ?`, [id]);
+        const steps = [];
+        const query = `SELECT ${field} FROM customer_records WHERE id = ?`;
+        steps.push({ action: 'MySQL Select', query, params: [id] });
+        
+        const [rows] = await db.execute(query, [id]);
         if (rows.length === 0) return res.status(404).json({ error: "Not found" });
         
         const encryptedValue = rows[0][field];
-        const policy = field === 'email' ? process.env.CRDP_EMAIL_POLICY : process.env.CRDP_CC_POLICY;
+        const emailPolicy = process.env.CRDP_EMAIL_POLICY || 'email_policy';
+        const ccPolicy = process.env.CRDP_CC_POLICY || 'cc_policy';
+        const policy = field === 'email' ? emailPolicy : ccPolicy;
+        
+        const cmUrl = process.env.CM_URL || 'http://crdpdemo';
+        steps.push({ 
+            action: 'CRDP Reveal Request', 
+            endpoint: `${cmUrl}/v1/reveal`, 
+            payload: { policy, data: encryptedValue }
+        });
 
-        /* Live Integration:
+        // Live Integration
         const revealResult = await callCRDP('reveal', policy, encryptedValue);
-        const decryptedValue = revealResult.revealed_data;
-        */
-        
-        const decryptedValue = encryptedValue.replace('enc(', '').replace(')', ''); // Simulation
-        
-        res.json({ original: encryptedValue, revealed: decryptedValue });
+        const decryptedValue = revealResult.revealed_data || revealResult.data || encryptedValue;
+
+        steps.push({ action: 'CRDP Reveal Response', result: decryptedValue });
+
+        res.json({ original: encryptedValue, revealed: decryptedValue, backendSteps: steps });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

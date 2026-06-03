@@ -1,7 +1,7 @@
 import { useState, useEffect, type ChangeEvent, type FormEvent } from 'react';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3001/api';
+const API_BASE = '/api';
 
 interface Record {
   id: number;
@@ -14,21 +14,54 @@ interface RevealedData {
   [key: string]: string;
 }
 
+interface ApiLog {
+  id: number;
+  method: string;
+  url: string;
+  request: any;
+  response?: any;
+  error?: any;
+  time: string;
+}
+
 function App() {
   const [formData, setFormData] = useState({ name: '', email: '', credit_card: '' });
   const [records, setRecords] = useState<Record[]>([]);
   const [loading, setLoading] = useState(false);
   const [revealedData, setRevealedData] = useState<RevealedData>({});
+  const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
+
+  const addApiLog = (log: Omit<ApiLog, 'id' | 'time'>) => {
+    setApiLogs(prev => [{ ...log, id: Date.now() + Math.random(), time: new Date().toLocaleTimeString() }, ...prev]);
+  };
 
   useEffect(() => {
     fetchRecords();
+    fetchStartupLogs();
   }, []);
 
-  const fetchRecords = async () => {
+  const fetchStartupLogs = async () => {
     try {
-      const response = await axios.get(`${API_BASE}/records`);
+      const res = await axios.get(`${API_BASE}/startup-logs`);
+      const logs = res.data.map((log: any) => ({
+        method: 'BACKEND_INIT',
+        url: log.message,
+        request: log.details,
+      }));
+      logs.forEach((log: Omit<ApiLog, 'id' | 'time'>) => addApiLog(log));
+    } catch (e) {
+      console.error("Failed to fetch startup logs", e);
+    }
+  };
+
+  const fetchRecords = async () => {
+    const url = `${API_BASE}/records`;
+    try {
+      const response = await axios.get(url);
+      addApiLog({ method: 'GET', url, request: null, response: response.data });
       setRecords(response.data);
-    } catch (err) {
+    } catch (err: any) {
+      addApiLog({ method: 'GET', url, request: null, error: err.message });
       console.error("Failed to fetch records", err);
     }
   };
@@ -36,11 +69,20 @@ function App() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    const url = `${API_BASE}/protect`;
     try {
-      await axios.post(`${API_BASE}/save`, formData);
+      const response = await axios.post(url, formData);
+      addApiLog({ method: 'POST', url, request: formData, response: response.data });
+      
+      const steps = response.data.backendSteps || [];
+      steps.forEach((step: any) => {
+        addApiLog({ method: 'BACKEND_STEP', url: step.action, request: step.payload || step.query || step.endpoint, response: step.result || step.params });
+      });
+
       setFormData({ name: '', email: '', credit_card: '' });
       fetchRecords();
     } catch (err: any) {
+      addApiLog({ method: 'POST', url, request: formData, error: err.message });
       alert("Error saving record: " + (err.response?.data?.error || err.message));
     } finally {
       setLoading(false);
@@ -48,13 +90,23 @@ function App() {
   };
 
   const handleReveal = async (id: number, field: string) => {
+    const url = `${API_BASE}/reveal`;
+    const payload = { id, field };
     try {
-      const response = await axios.post(`${API_BASE}/reveal`, { id, field });
+      const response = await axios.post(url, payload);
+      addApiLog({ method: 'POST', url, request: payload, response: response.data });
+      
+      const steps = response.data.backendSteps || [];
+      steps.forEach((step: any) => {
+        addApiLog({ method: 'BACKEND_STEP', url: step.action, request: step.payload || step.query || step.endpoint, response: step.result || step.params });
+      });
+
       setRevealedData(prev => ({
         ...prev,
         [`${id}-${field}`]: response.data.revealed
       }));
     } catch (err: any) {
+      addApiLog({ method: 'POST', url, request: payload, error: err.message });
       alert("Reveal failed: " + (err.response?.data?.error || err.message));
     }
   };
@@ -190,6 +242,27 @@ function App() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        {/* API Logs Section */}
+        <section className="lg:col-span-3 mt-8">
+          <div className="bg-slate-900 rounded-xl shadow-sm border border-slate-700 overflow-hidden text-green-400 font-mono text-xs">
+            <div className="p-4 border-b border-slate-700 bg-slate-800 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold">API Diagnostics Log</h2>
+              <button type="button" onClick={() => setApiLogs([])} className="text-sm hover:underline text-slate-300">Clear Logs</button>
+            </div>
+            <div className="p-4 h-64 overflow-y-auto space-y-4">
+              {apiLogs.map(log => (
+                <div key={log.id} className="border-b border-slate-800 pb-2">
+                  <div className="text-blue-400">[{log.time}] {log.method} {log.url}</div>
+                  {log.request && <div className="text-slate-400 mt-1">Request: {JSON.stringify(log.request)}</div>}
+                  {log.response && <div className="text-green-500 mt-1">Response: {JSON.stringify(log.response)}</div>}
+                  {log.error && <div className="text-red-500 mt-1">Error: {JSON.stringify(log.error)}</div>}
+                </div>
+              ))}
+              {apiLogs.length === 0 && <div className="text-slate-500">No API calls made yet.</div>}
             </div>
           </div>
         </section>
