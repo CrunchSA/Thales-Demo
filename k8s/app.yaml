@@ -68,11 +68,6 @@ spec:
             configMapKeyRef:
               name: thales-config
               key: CRDP_EMAIL_POLICY
-        - name: CSM_DB_PASSWORD_PATH
-          valueFrom:
-            configMapKeyRef:
-              name: thales-config
-              key: CSM_DB_PASSWORD_PATH
         - name: CM_TOKEN
           valueFrom:
             secretKeyRef:
