@@ -78,8 +78,20 @@ async function getDbPassword() {
         addLog("Successfully authenticated and retrieved MySQL password.");
         return password || process.env.DB_PASSWORD || 'temppass'; 
     } catch (error) {
-        addLog("CSM K8s authentication failed: " + (error.response?.data?.message || error.message));
-        throw error;
+        const errorMessage = error.response?.data?.message || error.message;
+        addLog("CSM K8s authentication failed: " + errorMessage, { error: errorMessage });
+
+        if (process.env.DB_PASSWORD) {
+            addLog("Falling back to DB_PASSWORD environment variable after CSM auth failure.");
+            return process.env.DB_PASSWORD;
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+            addLog("Falling back to temporary local password in non-production environment.");
+            return 'temppass';
+        }
+
+        throw new Error(`Unable to obtain DB password from CSM and no DB_PASSWORD fallback is configured: ${errorMessage}`);
     }
 }
 
@@ -213,7 +225,17 @@ app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
 });
 
-app.listen(PORT, async () => {
-    console.log(`Backend server running on port ${PORT}`);
-    await initDb();
-});
+async function startServer() {
+    try {
+        await initDb();
+
+        app.listen(PORT, () => {
+            console.log(`Backend server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("Application startup failed:", error.message || error);
+        process.exit(1);
+    }
+}
+
+startServer();
