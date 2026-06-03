@@ -47,7 +47,7 @@ async function getDbPassword() {
         const authConfigName = process.env.CSM_K8S_AUTH_CONFIG || 'k8s-auth-config';
 
         addLog("Authenticating with CSM using K8s JWT...", { 
-            endpoint: `${csmUrl}/v2/auth`, 
+            endpoint: `${csmUrl}/akeyless/api/v2/auth`, 
             payload: { 'access-type': 'k8s', 'access-id': accessId, 'k8s-service-account-token': '[REDACTED_JWT]', 'k8s-auth-config-name': authConfigName }
         });
 
@@ -63,7 +63,7 @@ async function getDbPassword() {
 
         const secretPath = process.env.CSM_DB_PASSWORD_PATH || '/secrets/mysql-pass';
         addLog("Fetching DB secret from CSM...", { 
-            endpoint: `${csmUrl}/api/v2/get-secret-value`, 
+            endpoint: `${csmUrl}/akeyless/api/v2/get-secret-value`, 
             payload: { 'names': [secretPath] }
         });
 
