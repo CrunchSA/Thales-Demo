@@ -221,7 +221,7 @@ app.post('/api/reveal', async (req, res) => {
 });
 
 // Wildcard route to serve index.html for SPA
-app.get(/.*/, (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
 });
 
