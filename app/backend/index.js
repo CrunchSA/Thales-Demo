@@ -101,10 +101,9 @@ async function getDbPassword() {
 // Function to call Thales CRDP for protection/reveal
 async function callCRDP(action, policyName, data) {
     const endpoint = action === 'protect' ? '/v1/protect' : '/v1/reveal';
-    const payload = {
-        [action === 'protect' ? 'protection_policy_name' : 'access_policy_name']: policyName,
-        data: data
-    };
+    const payload = action === 'protect'
+        ? { protection_policy_name: policyName, data: data }
+        : { protection_policy_name: policyName, protected_data: data };
     
     const cmUrl = process.env.CM_URL || 'http://crdpdemo';
 
@@ -233,7 +232,7 @@ app.post('/api/reveal', async (req, res) => {
         steps.push({ 
             action: 'CRDP Reveal Request', 
             endpoint: `${cmUrl}/v1/reveal`, 
-            payload: { policy: 'Generic', data: encryptedValue }
+            payload: { protection_policy_name: policy, protected_data: encryptedValue }
         });
 
         // Live Integration
