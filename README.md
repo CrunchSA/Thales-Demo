@@ -8,13 +8,22 @@ This project demonstrates **CipherTrust Secrets Management (CSM)** and **RESTful
 - `/k8s`: Kubernetes Deployment, Service, and ConfigMap manifests using the `thales-demo` namespace.
 - `Dockerfile`: Multi-stage build for the unified application image.
 
+## Prerequisites
+
+Before deploying this demo ensure the following are already in place:
+
+- An existing CRDP deployment with an application defined and reachable (the demo calls the CRDP service at `CM_URL`).
+- A configured Akeyless / CipherTrust gateway that stores the MySQL password and is reachable from the backend.
+- A Kubernetes Auth Method configured for the `thales-demo-sa` ServiceAccount in the `thales-demo` namespace (so the backend can exchange its ServiceAccount token for CSM credentials).
+- `kubectl` access to the target cluster with permissions to create the `thales-demo` namespace and apply the manifests.
+
 ## Deployment Steps
 
 ### 1. Configure Akeyless & Kubernetes Secrets
 Before deploying, configure your CipherTrust/Akeyless appliance:
 
-1. **MySQL Password:** Create a secret in CipherTrust Secrets Manager/Akeyless with the value `temppass`. The backend will fetch this dynamically at startup to authenticate with the database.
-2. **K8s Auth Method:** Ensure you have configured a Kubernetes Auth Method in your Akeyless console that matches the `thales-demo-sa` ServiceAccount and the `thales-demo` namespace.
+**MySQL Password:** Create a secret in CipherTrust Secrets Manager/Akeyless with the value `temppass`. The backend will fetch this dynamically at startup to authenticate with the database.
+**K8s Auth Method:** Ensure you have configured a Kubernetes Auth Method in your Akeyless console that matches the `thales-demo-sa` ServiceAccount and the `thales-demo` namespace.
 
 Next, create the ConfigMaps and Secrets in your cluster using your own environment-specific values:
 ```bash
@@ -35,6 +44,11 @@ kubectl create secret generic thales-secrets -n thales-demo \
   --from-literal=CM_TOKEN="<YOUR_CRDP_TOKEN>" \
   --from-literal=CSM_ACCESS_ID="<YOUR_CSM_ACCESS_ID>"
 ```
+
+### CRDP Policies
+
+Confirm the CRDP policies referenced by the demo (`CRDP_CC_POLICY`, `CRDP_EMAIL_POLICY`) exist in your CRDP/CM instance and are associated with the application used by this demo. If they do not exist, create them via the CRDP management UI or API and update the `thales-config` ConfigMap with the exact policy names or IDs.
+
 
 ### 2. Deploy to Cluster
 Apply the manifests:
