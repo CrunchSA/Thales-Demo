@@ -206,6 +206,13 @@ app.post('/api/protect', async (req, res) => {
 
         // Live Integration
         const emailProtection = await callCRDP('protect', emailPolicy, email);
+        
+        steps.push({ 
+            action: 'CRDP Protect Request', 
+            endpoint: `${cmUrl}/v1/protect`, 
+            payload: { policy: ccPolicy, data: credit_card }
+        });
+
         const ccProtection = await callCRDP('protect', ccPolicy, credit_card);
         
         const protectedData = {
