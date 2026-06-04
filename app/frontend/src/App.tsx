@@ -178,6 +178,46 @@ function App() {
     return <span>{String(value)}</span>;
   };
 
+  const renderBackendLogDetails = (details: any) => {
+    if (!details) return null;
+
+    const { endpoint, payload, response, error, ...rest } = details;
+    return (
+      <>
+        {endpoint && (
+          <div className="text-slate-400 mt-2">
+            <div className="font-semibold">Endpoint:</div>
+            {renderLogValue(endpoint)}
+          </div>
+        )}
+        {payload && (
+          <div className="text-slate-400 mt-2">
+            <div className="font-semibold">Request:</div>
+            {renderLogValue(payload)}
+          </div>
+        )}
+        {response && (
+          <div className="text-green-500 mt-2">
+            <div className="font-semibold">Response:</div>
+            {renderLogValue(response)}
+          </div>
+        )}
+        {error && (
+          <div className="text-red-500 mt-2">
+            <div className="font-semibold">Error:</div>
+            {renderLogValue(error)}
+          </div>
+        )}
+        {Object.keys(rest).length > 0 && (
+          <div className="text-slate-400 mt-2">
+            <div className="font-semibold">Details:</div>
+            {renderLogValue(rest)}
+          </div>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -339,9 +379,8 @@ function App() {
                 <div key={log.id} className="border-b border-slate-800 pb-2">
                   <div className="text-yellow-300">[{log.time}] {log.message}</div>
                   {log.details && (
-                    <div className="text-slate-400 mt-1">
-                      <div className="font-semibold">Details:</div>
-                      {renderLogValue(log.details)}
+                    <div className="mt-2">
+                      {renderBackendLogDetails(log.details)}
                     </div>
                   )}
                 </div>
