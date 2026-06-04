@@ -63,6 +63,13 @@ async function getDbPassword() {
         };
         const authResponse = await axios.post(`${csmUrl}/api/v2/auth`, authPayload);
         const csmToken = authResponse.data.token;
+        addLog("CSM authentication response received", {
+            endpoint: `${csmUrl}/api/v2/auth`,
+            response: {
+                status: authResponse.status,
+                data: { ...authResponse.data, token: '[REDACTED]' }
+            }
+        });
 
         const secretPath = process.env.CSM_DB_PASSWORD_PATH || '/secrets/mysql-pass';
         addLog("Fetching DB secret from CSM...", { 
@@ -76,6 +83,17 @@ async function getDbPassword() {
             'name': [secretPath]
         };
         const secretResponse = await axios.post(`${csmUrl}/api/v2/get-secret-value`, secretPayload);
+        addLog("CSM secret retrieval response received", {
+            endpoint: `${csmUrl}/api/v2/get-secret-value`,
+            payload: secretPayload,
+            response: {
+                status: secretResponse.status,
+                data: {
+                    secretPath,
+                    value: '[REDACTED]'
+                }
+            }
+        });
         
         const password = secretResponse.data[secretPath];
         addLog("Successfully authenticated and retrieved MySQL password.");
