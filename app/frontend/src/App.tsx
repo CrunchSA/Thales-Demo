@@ -24,6 +24,13 @@ interface ApiLog {
   time: string;
 }
 
+interface BackendLog {
+  id: number;
+  message: string;
+  details?: any;
+  time: string;
+}
+
 function App() {
   const [formData, setFormData] = useState({ name: '', email: '', credit_card: '' });
   const [records, setRecords] = useState<Record[]>([]);
@@ -31,14 +38,33 @@ function App() {
   const [revealedData, setRevealedData] = useState<RevealedData>({});
   const [revealUserName, setRevealUserName] = useState('');
   const [apiLogs, setApiLogs] = useState<ApiLog[]>([]);
+  const [backendLogs, setBackendLogs] = useState<BackendLog[]>([]);
 
   const addApiLog = (log: Omit<ApiLog, 'id' | 'time'>) => {
     setApiLogs(prev => [{ ...log, id: Date.now() + Math.random(), time: new Date().toLocaleTimeString() }, ...prev]);
   };
 
+  const addBackendLog = (log: Omit<BackendLog, 'id' | 'time'>) => {
+    setBackendLogs(prev => [{ ...log, id: Date.now() + Math.random(), time: new Date().toLocaleTimeString() }, ...prev]);
+  };
+
   useEffect(() => {
     fetchRecords();
+    fetchStartupLogs();
   }, []);
+
+  const fetchStartupLogs = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/startup-logs`);
+      const logs = res.data.map((log: any) => ({
+        message: log.message,
+        details: log.details,
+      }));
+      logs.forEach((log: Omit<BackendLog, 'id' | 'time'>) => addBackendLog(log));
+    } catch (e) {
+      console.error("Failed to fetch startup logs", e);
+    }
+  };
 
   const fetchRecords = async () => {
     const url = `${API_BASE}/records`;
@@ -297,6 +323,30 @@ function App() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </section>
+
+        {/* Backend Startup Logs Section */}
+        <section className="lg:col-span-3 mt-8">
+          <div className="bg-slate-900 rounded-xl shadow-sm border border-slate-700 overflow-hidden text-yellow-300 font-mono text-xs">
+            <div className="p-4 border-b border-slate-700 bg-slate-800 flex justify-between items-center text-white">
+              <h2 className="text-lg font-semibold">Backend Startup Log</h2>
+              <button type="button" onClick={() => setBackendLogs([])} className="text-sm hover:underline text-slate-300">Clear Logs</button>
+            </div>
+            <div className="p-4 h-56 overflow-y-auto space-y-4">
+              {backendLogs.map(log => (
+                <div key={log.id} className="border-b border-slate-800 pb-2">
+                  <div className="text-yellow-300">[{log.time}] {log.message}</div>
+                  {log.details && (
+                    <div className="text-slate-400 mt-1">
+                      <div className="font-semibold">Details:</div>
+                      {renderLogValue(log.details)}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {backendLogs.length === 0 && <div className="text-slate-500">No backend startup logs available.</div>}
             </div>
           </div>
         </section>
