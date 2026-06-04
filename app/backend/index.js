@@ -67,7 +67,7 @@ async function getDbPassword() {
             endpoint: `${csmUrl}/api/v2/auth`,
             response: {
                 status: authResponse.status,
-                data: { ...authResponse.data, token: '[REDACTED]' }
+                data: authResponse.data
             }
         });
 
@@ -80,18 +80,14 @@ async function getDbPassword() {
         // LIVE INTEGRATION: Fetch Secret
         const secretPayload = {
             'token': csmToken,
-            'name': [secretPath]
+            'names': [secretPath]
         };
         const secretResponse = await axios.post(`${csmUrl}/api/v2/get-secret-value`, secretPayload);
         addLog("CSM secret retrieval response received", {
             endpoint: `${csmUrl}/api/v2/get-secret-value`,
-            payload: secretPayload,
             response: {
                 status: secretResponse.status,
-                data: {
-                    secretPath,
-                    value: '[REDACTED]'
-                }
+                data: secretResponse.data
             }
         });
         
