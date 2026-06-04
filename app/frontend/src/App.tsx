@@ -38,22 +38,7 @@ function App() {
 
   useEffect(() => {
     fetchRecords();
-    fetchStartupLogs();
   }, []);
-
-  const fetchStartupLogs = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/startup-logs`);
-      const logs = res.data.map((log: any) => ({
-        method: 'BACKEND_INIT',
-        url: log.message,
-        request: log.details,
-      }));
-      logs.forEach((log: Omit<ApiLog, 'id' | 'time'>) => addApiLog(log));
-    } catch (e) {
-      console.error("Failed to fetch startup logs", e);
-    }
-  };
 
   const fetchRecords = async () => {
     const url = `${API_BASE}/records`;
@@ -83,11 +68,6 @@ function App() {
     try {
       const response = await axios.post(url, formData);
       addApiLog({ method: 'POST', url, request: formData, response: response.data });
-      
-      const steps = response.data.backendSteps || [];
-      steps.forEach((step: any) => {
-        addApiLog({ method: 'BACKEND_STEP', url: step.action, request: step.payload || step.query || step.endpoint, response: step.result || step.params });
-      });
 
       setFormData({ name: '', email: '', credit_card: '' });
       fetchRecords();
@@ -114,11 +94,6 @@ function App() {
     try {
       const response = await axios.post(url, payload);
       addApiLog({ method: 'POST', url, request: payload, response: response.data });
-      
-      const steps = response.data.backendSteps || [];
-      steps.forEach((step: any) => {
-        addApiLog({ method: 'BACKEND_STEP', url: step.action, request: step.payload || step.query || step.endpoint, response: step.result || step.params });
-      });
 
       setRevealedData(prev => ({
         ...prev,
@@ -333,7 +308,7 @@ function App() {
               <h2 className="text-lg font-semibold">API Diagnostics Log</h2>
               <button type="button" onClick={() => setApiLogs([])} className="text-sm hover:underline text-slate-300">Clear Logs</button>
             </div>
-            <div className="p-4 h-64 overflow-y-auto space-y-4">
+            <div className="p-4 h-[32rem] overflow-y-auto space-y-4">
               {apiLogs.map(log => (
                 <div key={log.id} className="border-b border-slate-800 pb-2">
                   <div className="text-blue-400">[{log.time}] {log.method} {log.url}</div>
