@@ -374,7 +374,7 @@ function App() {
               <h2 className="text-lg font-semibold">Backend Startup Log</h2>
               <button type="button" onClick={() => setBackendLogs([])} className="text-sm hover:underline text-slate-300">Clear Logs</button>
             </div>
-            <div className="p-4 h-56 overflow-y-auto space-y-4">
+            <div className="p-4 h-96 overflow-y-auto space-y-4">
               {backendLogs.map(log => (
                 <div key={log.id} className="border-b border-slate-800 pb-2">
                   <div className="text-yellow-300">[{log.time}] {log.message}</div>

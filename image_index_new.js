@@ -152,23 +152,16 @@ async function callCRDP(action, policyName, data, username) {
 // Initialize Database Connection
 async function initDb() {
     try {
-        addLog("Starting Database Initialization Process...", { timestamp: new Date().toISOString() });
         const password = await getDbPassword();
-        const dbHost = process.env.DB_HOST;
-        const dbUser = process.env.DB_USER;
-        const dbName = process.env.DB_NAME;
-        addLog("Database credentials retrieved", { host: dbHost, user: dbUser, database: dbName });
-        addLog("Connecting to MySQL Database...", { host: dbHost, user: dbUser, database: dbName, connectionTimeout: 10000 });
+        addLog("Connecting to MySQL Database...", { host: process.env.DB_HOST, user: process.env.DB_USER, database: process.env.DB_NAME });
         db = await mysql.createConnection({
-            host: dbHost,
-            user: dbUser,
-            database: dbName,
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            database: process.env.DB_NAME,
             password: password
         });
-        addLog("Connected to MySQL Database successfully.", { connectionId: Math.random().toString(36).substr(2, 9) });
-        addLog("Database connection verified and ready for queries.", { status: 'ACTIVE' });
+        addLog("Connected to MySQL Database.");
     } catch (error) {
-        addLog("Database initialization FAILED", { error: error.message, code: error.code });
         console.error("Database initialization failed:", error.message);
         process.exit(1);
     }
@@ -285,24 +278,12 @@ app.get(/./, (req, res) => {
 
 async function startServer() {
     try {
-        addLog("=== Backend Server Initialization Started ===", { version: '1.0', nodeVersion: process.version, environment: process.env.NODE_ENV || 'development' });
-        addLog("Loading environment configuration...", { loadedEnvVars: Object.keys(process.env).filter(k => k.startsWith('DB_') || k.startsWith('CM_') || k.startsWith('CSM_') || k.startsWith('CRDP_')).length });
-        
-        addLog("Configuring Express middleware...", { cors: true, jsonParser: true, staticFiles: true });
-        addLog("Registering API routes...", { routes: ['/api/startup-logs', '/api/records', '/api/clear-records', '/api/protect', '/api/reveal', '/*'] });
-        
         await initDb();
 
-        const server = app.listen(PORT, () => {
-            addLog(`✓ Backend server started successfully`, { port: PORT, protocol: 'HTTP', ready: true });
-            addLog("=== Backend Server Ready for Requests ===", { uptime: process.uptime(), timestamp: new Date().toISOString() });
-        });
-        
-        server.on('error', (err) => {
-            addLog("Server encountered an error", { error: err.message, code: err.code });
+        app.listen(PORT, () => {
+            console.log(`Backend server running on port ${PORT}`);
         });
     } catch (error) {
-        addLog("Application startup FAILED - CRITICAL", { error: error.message, stack: error.stack });
         console.error("Application startup failed:", error.message || error);
         process.exit(1);
     }
