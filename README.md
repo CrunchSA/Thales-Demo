@@ -1,6 +1,6 @@
 # Thales CipherTrust Demo - Deployment Guide
 
-This project demonstrates **CipherTrust Secrets Management (CSM)** and **RESTful Data Protection (CRDP)** in a Kubernetes environment. The application features a dynamic UI that reveals backend system events and API calls in real-time for demonstration purposes.
+This project demonstrates **CipherTrust Secrets Management (CSM)** and **RESTful Data Protection (CRDP)** in a Kubernetes environment. The application features a dynamic UI that reveals backend system events and API calls in real-time for demonstration purposes by using a back-end MySQL database for storage and retreival of user-submitted information in a web app.
 
 ## Project Structure
 - `/app/frontend`: React (TS) + Tailwind CSS UI featuring a real-time API Diagnostics Log.
