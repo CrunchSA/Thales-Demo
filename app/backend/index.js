@@ -269,11 +269,11 @@ app.post('/api/reveal', async (req, res) => {
 });
 
 // SPA fallback: serve index.html for non-API GET requests
-app.use((req, res, next) => {
-    if (req.method === 'GET' && !req.path.startsWith('/api') && !req.path.startsWith('/backend')) {
+app.get(/./, (req, res) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/backend')) {
         return res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
     }
-    next();
+    res.status(404).json({ error: 'Not found' });
 });
 
 async function startServer() {
