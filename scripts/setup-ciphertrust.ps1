@@ -26,7 +26,7 @@ $script:Password = ''
 $script:Domain = ''
 $script:Headers = @{}
 
-function Load-EnvFile {
+function Get-EnvConfig {
     param(
         [Parameter(Mandatory = $true)]
         [string]
@@ -52,7 +52,7 @@ function Load-EnvFile {
     return $env
 }
 
-function Validate-Config {
+function Test-Config {
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]
@@ -60,7 +60,7 @@ function Validate-Config {
     )
 
     $required = @('CIPHERTRUST_URL', 'CIPHERTRUST_USERNAME', 'CIPHERTRUST_PASSWORD')
-    $missing = $required | Where-Object { -not $Config.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($Config[$_]) }
+    $missing = @($required | Where-Object { -not $Config.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($Config[$_]) })
 
     if ($missing.Count -gt 0) {
         throw "Missing required environment variables: $($missing -join ', ')"
@@ -102,7 +102,7 @@ function Send-Request {
         $Body
     )
 
-    $uri = "$BaseURL$Path"
+    $uri = "$script:BaseURL$Path"
     $bodyJson = $null
     if ($Body) {
         $bodyJson = $Body | ConvertTo-Json -Depth 10
@@ -112,9 +112,9 @@ function Send-Request {
 
     try {
         if ($bodyJson) {
-            $response = Invoke-WebRequest -Uri $uri -Method $Method -Headers $Headers -Body $bodyJson -ContentType 'application/json'
+            $response = Invoke-WebRequest -Uri $uri -Method $Method -Headers $script:Headers -Body $bodyJson -ContentType 'application/json' -SkipHttpErrorCheck
         } else {
-            $response = Invoke-WebRequest -Uri $uri -Method $Method -Headers $Headers
+            $response = Invoke-WebRequest -Uri $uri -Method $Method -Headers $script:Headers -SkipHttpErrorCheck
         }
 
         return [PSCustomObject]@{
@@ -123,25 +123,6 @@ function Send-Request {
             RawResponse = $response
         }
     } catch {
-        $errorResponse = $_.Exception.Response
-        if ($errorResponse -ne $null) {
-            $responseStream = $errorResponse.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($responseStream)
-            $content = $reader.ReadToEnd()
-            $parsedBody = $null
-            try {
-                $parsedBody = $content | ConvertFrom-Json
-            } catch {
-                $parsedBody = $content
-            }
-
-            return [PSCustomObject]@{
-                StatusCode = [int]$errorResponse.StatusCode
-                Body = $parsedBody
-                RawResponse = $content
-            }
-        }
-
         throw $_
     }
 }
@@ -149,7 +130,7 @@ function Send-Request {
 function Authenticate {
     Write-Host '🔐 Authenticating with CipherTrust...'
 
-    $response = Send-Request -Method 'POST' -Path '/api/v1/auth/login' -Body @{ username = $Username; password = $Password }
+    $response = Send-Request -Method 'POST' -Path '/api/v1/auth/login' -Body @{ username = $script:Username; password = $script:Password }
 
     if ($response.StatusCode -ne 200) {
         throw "Authentication failed: $($response.StatusCode) $($response.Body?.message)"
@@ -162,7 +143,7 @@ function Authenticate {
     return $response.Body.token
 }
 
-function Create-ProtectionPolicy {
+function New-ProtectionPolicy {
     Write-Host "`n📋 Creating protection policy..."
 
     $policyData = @{ 
@@ -190,7 +171,7 @@ function Create-ProtectionPolicy {
     throw "Failed to create protection policy: $($response.StatusCode) $($response.Body?.message)"
 }
 
-function Create-AccessPolicy {
+function New-AccessPolicy {
     Write-Host "`n📋 Creating access policy..."
 
     $policyData = @{ 
@@ -219,7 +200,7 @@ function Create-AccessPolicy {
     throw "Failed to create access policy: $($response.StatusCode) $($response.Body?.message)"
 }
 
-function Create-Application {
+function New-Application {
     param(
         [Parameter(Mandatory = $true)]
         $ProtectionPolicy,
@@ -259,8 +240,8 @@ function Main {
     try {
         Write-Host '🚀 Starting CipherTrust setup...`n'
 
-        $config = Load-EnvFile -FilePath $EnvPath
-        Validate-Config -Config $config
+        $config = Get-EnvConfig -FilePath $EnvPath
+        Test-Config -Config $config
 
         $script:BaseURL = $config.CIPHERTRUST_URL.TrimEnd('/')
         $script:Username = $config.CIPHERTRUST_USERNAME
@@ -269,11 +250,11 @@ function Main {
         $script:Headers = @{ Authorization = "Bearer "; 'Content-Type' = 'application/json' }
 
         $token = Authenticate
-        $Headers.Authorization = "Bearer $token"
+        $script:Headers.Authorization = "Bearer $token"
 
-        $protectionPolicy = Create-ProtectionPolicy
-        $accessPolicy = Create-AccessPolicy
-        $application = Create-Application -ProtectionPolicy $protectionPolicy -AccessPolicy $accessPolicy
+        $protectionPolicy = New-ProtectionPolicy
+        $accessPolicy = New-AccessPolicy
+        $application = New-Application -ProtectionPolicy $protectionPolicy -AccessPolicy $accessPolicy
 
         Write-Host "`n✨ Setup completed successfully!"
         Write-Host "`nConfiguration to use in your application:"
