@@ -40,6 +40,7 @@ spec:
       containers:
       - name: app
         image: ghcr.io/crunchsa/thales-demo-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3001
         env:
