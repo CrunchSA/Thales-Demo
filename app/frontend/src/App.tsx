@@ -397,7 +397,7 @@ function App() {
               <h2 className="text-lg font-semibold">API Diagnostics Log</h2>
               <button type="button" onClick={() => setApiLogs([])} className="text-sm hover:underline text-slate-300">Clear Logs</button>
             </div>
-            <div className="p-4 h-[32rem] overflow-y-auto space-y-4">
+            <div className="p-4 h-[64rem] overflow-y-auto space-y-4">
               {apiLogs.map(log => (
                 <div key={log.id} className="border-b border-slate-800 pb-2">
                   <div className="text-blue-400">[{log.time}] {log.method} {log.url}</div>
