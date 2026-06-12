@@ -30,8 +30,16 @@ CIPHERTRUST_DOMAIN=default
 
 ### 2. Run the Setup Script
 
+#### Node.js
+
 ```bash
 node scripts/setup-ciphertrust.js
+```
+
+#### PowerShell
+
+```powershell
+pwsh scripts/setup-ciphertrust.ps1
 ```
 
 The script will:
